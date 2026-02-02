@@ -17,6 +17,7 @@ from nanobot.config.schema import DiscordConfig
 
 DISCORD_API_BASE = "https://discord.com/api/v10"
 DEFAULT_MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024  # 20MB
+DISCORD_MAX_CONTENT_CHARS = 2000
 
 
 class DiscordChannel(BaseChannel):
@@ -88,33 +89,62 @@ class DiscordChannel(BaseChannel):
             return
 
         url = f"{DISCORD_API_BASE}/channels/{msg.chat_id}/messages"
-        payload: dict[str, Any] = {"content": msg.content}
-
-        if msg.reply_to:
-            payload["message_reference"] = {"message_id": msg.reply_to}
-            payload["allowed_mentions"] = {"replied_user": False}
-
         headers = {"Authorization": f"Bot {self.config.token}"}
 
+        content = (msg.content or "").strip()
+        if not content:
+            logger.warning("Discord message content is empty; skipping send")
+            await self._stop_typing(msg.chat_id)
+            return
+
+        chunks = self._chunk_content(content, DISCORD_MAX_CONTENT_CHARS)
+
         try:
-            for attempt in range(3):
-                try:
-                    response = await self._http.post(url, headers=headers, json=payload)
-                    if response.status_code == 429:
-                        data = response.json()
-                        retry_after = float(data.get("retry_after", 1.0))
-                        logger.warning(f"Discord rate limited, retrying in {retry_after}s")
-                        await asyncio.sleep(retry_after)
-                        continue
-                    response.raise_for_status()
-                    return
-                except Exception as e:
-                    if attempt == 2:
-                        logger.error(f"Error sending Discord message: {e}")
-                    else:
-                        await asyncio.sleep(1)
+            for idx, chunk in enumerate(chunks):
+                payload: dict[str, Any] = {"content": chunk}
+                if msg.reply_to and idx == 0:
+                    payload["message_reference"] = {"message_id": msg.reply_to}
+                    payload["allowed_mentions"] = {"replied_user": False}
+
+                for attempt in range(3):
+                    try:
+                        response = await self._http.post(url, headers=headers, json=payload)
+                        if response.status_code == 429:
+                            data = response.json()
+                            retry_after = float(data.get("retry_after", 1.0))
+                            logger.warning(f"Discord rate limited, retrying in {retry_after}s")
+                            await asyncio.sleep(retry_after)
+                            continue
+                        response.raise_for_status()
+                        break
+                    except Exception as e:
+                        if attempt == 2:
+                            logger.error(f"Error sending Discord message: {e}")
+                        else:
+                            await asyncio.sleep(1)
         finally:
             await self._stop_typing(msg.chat_id)
+
+    def _chunk_content(self, content: str, limit: int) -> list[str]:
+        """Split content into Discord-safe chunks (<= limit chars)."""
+        if len(content) <= limit:
+            return [content]
+
+        chunks: list[str] = []
+        start = 0
+        while start < len(content):
+            end = min(start + limit, len(content))
+            if end < len(content):
+                split_at = content.rfind("\n", start, end)
+                if split_at != -1 and split_at > start:
+                    end = split_at
+            chunk = content[start:end].rstrip()
+            if chunk:
+                chunks.append(chunk)
+            start = end
+            if start < len(content) and content[start] == "\n":
+                start += 1
+        return chunks or [content[:limit]]
 
     async def _gateway_loop(self) -> None:
         """Main gateway loop: identify, heartbeat, dispatch events."""

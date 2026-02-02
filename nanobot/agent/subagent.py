@@ -33,12 +33,16 @@ class SubagentManager:
         bus: MessageBus,
         model: str | None = None,
         brave_api_key: str | None = None,
+        firecrawl_api_key: str | None = None,
+        web_search_provider: str = "auto",
     ):
         self.provider = provider
         self.workspace = workspace
         self.bus = bus
         self.model = model or provider.get_default_model()
         self.brave_api_key = brave_api_key
+        self.firecrawl_api_key = firecrawl_api_key
+        self.web_search_provider = web_search_provider
         self._running_tasks: dict[str, asyncio.Task[None]] = {}
     
     async def spawn(
@@ -97,7 +101,11 @@ class SubagentManager:
             tools.register(WriteFileTool())
             tools.register(ListDirTool())
             tools.register(ExecTool(working_dir=str(self.workspace)))
-            tools.register(WebSearchTool(api_key=self.brave_api_key))
+            tools.register(WebSearchTool(
+                brave_api_key=self.brave_api_key,
+                firecrawl_api_key=self.firecrawl_api_key,
+                default_provider=self.web_search_provider,
+            ))
             tools.register(WebFetchTool())
             
             # Build messages with subagent-specific prompt

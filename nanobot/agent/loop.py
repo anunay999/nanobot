@@ -40,7 +40,9 @@ class AgentLoop:
         workspace: Path,
         model: str | None = None,
         max_iterations: int = 20,
-        brave_api_key: str | None = None
+        brave_api_key: str | None = None,
+        firecrawl_api_key: str | None = None,
+        web_search_provider: str = "auto",
     ):
         self.bus = bus
         self.provider = provider
@@ -48,6 +50,8 @@ class AgentLoop:
         self.model = model or provider.get_default_model()
         self.max_iterations = max_iterations
         self.brave_api_key = brave_api_key
+        self.firecrawl_api_key = firecrawl_api_key
+        self.web_search_provider = web_search_provider
         
         self.context = ContextBuilder(workspace)
         self.sessions = SessionManager(workspace)
@@ -58,6 +62,8 @@ class AgentLoop:
             bus=bus,
             model=self.model,
             brave_api_key=brave_api_key,
+            firecrawl_api_key=firecrawl_api_key,
+            web_search_provider=web_search_provider,
         )
         
         self._running = False
@@ -75,7 +81,11 @@ class AgentLoop:
         self.tools.register(ExecTool(working_dir=str(self.workspace)))
         
         # Web tools
-        self.tools.register(WebSearchTool(api_key=self.brave_api_key))
+        self.tools.register(WebSearchTool(
+            brave_api_key=self.brave_api_key,
+            firecrawl_api_key=self.firecrawl_api_key,
+            default_provider=self.web_search_provider,
+        ))
         self.tools.register(WebFetchTool())
         
         # Message tool

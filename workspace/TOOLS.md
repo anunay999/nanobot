@@ -44,12 +44,12 @@ exec(command: str, working_dir: str = None) -> str
 ## Web Access
 
 ### web_search
-Search the web using DuckDuckGo.
+Search the web using Brave or Firecrawl.
 ```
-web_search(query: str) -> str
+web_search(query: str, count: int = 5, provider: str = "auto") -> str
 ```
 
-Returns top 5 search results with titles, URLs, and snippets.
+Returns search results with titles, URLs, and snippets.
 
 ### web_fetch
 Fetch and extract main content from a URL.
@@ -58,8 +58,8 @@ web_fetch(url: str) -> str
 ```
 
 **Notes:**
-- Content is extracted using trafilatura
-- Output is truncated at 8,000 characters
+- Content is extracted using Readability
+- Output is truncated at 50,000 characters
 
 ## Communication
 

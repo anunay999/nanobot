@@ -74,6 +74,8 @@ class GatewayConfig(BaseModel):
 class WebSearchConfig(BaseModel):
     """Web search tool configuration."""
     api_key: str = ""  # Brave Search API key
+    firecrawl_api_key: str = ""  # Firecrawl API key
+    provider: str = "auto"  # auto, brave, firecrawl
     max_results: int = 5
 
 

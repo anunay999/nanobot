@@ -29,7 +29,7 @@ def _normalize(text: str) -> str:
 
 
 class WebSearchTool(Tool):
-    """Search the web using Brave Search API."""
+    """Search the web using Brave or Firecrawl Search API."""
     
     name = "web_search"
     description = "Search the web. Returns titles, URLs, and snippets."
@@ -37,42 +37,110 @@ class WebSearchTool(Tool):
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Search query"},
-            "count": {"type": "integer", "description": "Results (1-10)", "minimum": 1, "maximum": 10}
+            "count": {"type": "integer", "description": "Results (1-10)", "minimum": 1, "maximum": 10},
+            "provider": {
+                "type": "string",
+                "enum": ["auto", "brave", "firecrawl"],
+                "description": "Search provider (default: auto)"
+            }
         },
         "required": ["query"]
     }
     
-    def __init__(self, api_key: str | None = None, max_results: int = 5):
-        self.api_key = api_key or os.environ.get("BRAVE_API_KEY", "")
+    def __init__(
+        self,
+        brave_api_key: str | None = None,
+        firecrawl_api_key: str | None = None,
+        max_results: int = 5,
+        default_provider: str = "auto",
+    ):
+        self.brave_api_key = brave_api_key or os.environ.get("BRAVE_API_KEY", "")
+        self.firecrawl_api_key = firecrawl_api_key or os.environ.get("FIRECRAWL_API_KEY", "")
         self.max_results = max_results
+        self.default_provider = default_provider
     
-    async def execute(self, query: str, count: int | None = None, **kwargs: Any) -> str:
-        if not self.api_key:
-            return "Error: BRAVE_API_KEY not configured"
+    async def execute(
+        self,
+        query: str,
+        count: int | None = None,
+        provider: str | None = None,
+        **kwargs: Any,
+    ) -> str:
+        n = min(max(count or self.max_results, 1), 10)
+        selected_provider = (provider or self.default_provider or "auto").lower()
         
+        if selected_provider == "auto":
+            if self.brave_api_key:
+                selected_provider = "brave"
+            elif self.firecrawl_api_key:
+                selected_provider = "firecrawl"
+        
+        if selected_provider == "brave":
+            if not self.brave_api_key:
+                return "Error: BRAVE_API_KEY not configured"
+            return await self._search_brave(query, n)
+        
+        if selected_provider == "firecrawl":
+            if not self.firecrawl_api_key:
+                return "Error: FIRECRAWL_API_KEY not configured"
+            return await self._search_firecrawl(query, n)
+        
+        return "Error: Unknown provider. Use 'brave', 'firecrawl', or 'auto'."
+    
+    async def _search_brave(self, query: str, n: int) -> str:
         try:
-            n = min(max(count or self.max_results, 1), 10)
             async with httpx.AsyncClient() as client:
                 r = await client.get(
                     "https://api.search.brave.com/res/v1/web/search",
                     params={"q": query, "count": n},
-                    headers={"Accept": "application/json", "X-Subscription-Token": self.api_key},
-                    timeout=10.0
+                    headers={"Accept": "application/json", "X-Subscription-Token": self.brave_api_key},
+                    timeout=10.0,
                 )
                 r.raise_for_status()
             
             results = r.json().get("web", {}).get("results", [])
-            if not results:
-                return f"No results for: {query}"
-            
-            lines = [f"Results for: {query}\n"]
-            for i, item in enumerate(results[:n], 1):
-                lines.append(f"{i}. {item.get('title', '')}\n   {item.get('url', '')}")
-                if desc := item.get("description"):
-                    lines.append(f"   {desc}")
-            return "\n".join(lines)
+            return self._format_results(query, results, n)
         except Exception as e:
             return f"Error: {e}"
+    
+    async def _search_firecrawl(self, query: str, n: int) -> str:
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    "https://api.firecrawl.dev/v1/search",
+                    json={"query": query, "limit": n},
+                    headers={
+                        "Accept": "application/json",
+                        "Authorization": f"Bearer {self.firecrawl_api_key}",
+                    },
+                    timeout=15.0,
+                )
+                r.raise_for_status()
+            
+            payload = r.json()
+            results = payload.get("data") or payload.get("results") or []
+            return self._format_results(query, results, n)
+        except Exception as e:
+            return f"Error: {e}"
+    
+    def _format_results(self, query: str, results: list[dict[str, Any]], n: int) -> str:
+        if not results:
+            return f"No results for: {query}"
+        
+        lines = [f"Results for: {query}\n"]
+        for i, item in enumerate(results[:n], 1):
+            title = item.get("title", "") or item.get("name", "")
+            url = item.get("url", "") or item.get("link", "")
+            desc = (
+                item.get("description")
+                or item.get("snippet")
+                or item.get("content")
+                or ""
+            )
+            lines.append(f"{i}. {title}\n   {url}")
+            if desc:
+                lines.append(f"   {desc}")
+        return "\n".join(lines)
 
 
 class WebFetchTool(Tool):

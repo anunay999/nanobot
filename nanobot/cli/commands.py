@@ -200,7 +200,9 @@ def gateway(
         workspace=config.workspace_path,
         model=config.agents.defaults.model,
         max_iterations=config.agents.defaults.max_tool_iterations,
-        brave_api_key=config.tools.web.search.api_key or None
+        brave_api_key=config.tools.web.search.api_key or None,
+        firecrawl_api_key=config.tools.web.search.firecrawl_api_key or None,
+        web_search_provider=config.tools.web.search.provider or "auto",
     )
     
     # Create cron service
@@ -305,7 +307,9 @@ def agent(
         bus=bus,
         provider=provider,
         workspace=config.workspace_path,
-        brave_api_key=config.tools.web.search.api_key or None
+        brave_api_key=config.tools.web.search.api_key or None,
+        firecrawl_api_key=config.tools.web.search.firecrawl_api_key or None,
+        web_search_provider=config.tools.web.search.provider or "auto",
     )
     
     if message:

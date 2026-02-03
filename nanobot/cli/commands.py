@@ -1,6 +1,9 @@
 """CLI commands for nanobot."""
 
 import asyncio
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import typer
@@ -156,8 +159,13 @@ This file stores important information that should persist across sessions.
 def gateway(
     port: int = typer.Option(18790, "--port", "-p", help="Gateway port"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+    daemon: bool = typer.Option(False, "--daemon", "-d", help="Run in background"),
 ):
     """Start the nanobot gateway."""
+    if daemon:
+        _run_gateway_daemon(port=port, verbose=verbose)
+        return
+
     from nanobot.config.loader import load_config, get_data_dir
     from nanobot.bus.queue import MessageBus
     from nanobot.providers.litellm_provider import LiteLLMProvider
@@ -267,6 +275,26 @@ def gateway(
             await channels.stop_all()
     
     asyncio.run(run())
+
+
+def _run_gateway_daemon(port: int, verbose: bool) -> None:
+    """Spawn gateway in background and exit."""
+    cmd = [sys.executable, "-m", "nanobot", "gateway", "--port", str(port)]
+    if verbose:
+        cmd.append("--verbose")
+
+    with open(os.devnull, "rb") as devnull_in, open(
+        os.devnull, "ab"
+    ) as devnull_out:
+        process = subprocess.Popen(
+            cmd,
+            stdin=devnull_in,
+            stdout=devnull_out,
+            stderr=devnull_out,
+            start_new_session=True,
+        )
+
+    console.print(f"[green]✓[/green] Gateway daemon started (pid {process.pid})")
 
 
 

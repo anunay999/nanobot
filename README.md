@@ -133,6 +133,26 @@ rg "REF_ID_HERE" ~/.nanobot/logs/nanobot.log
 If a message fails, the user-facing error includes a `Reference ID`. Use that ID
 to locate the full stack trace and tool/LLM timing in the log file.
 
+## 📊 LLM Observability (Opik)
+
+Enable Opik tracing by adding this to `~/.nanobot/config.json`:
+
+```json
+{
+  "observability": {
+    "opik": {
+      "enabled": true,
+      "apiKey": "YOUR_OPIK_API_KEY",
+      "baseUrl": "https://your-opik-instance",
+      "projectName": "nanobot"
+    }
+  }
+}
+```
+
+Set `baseUrl` to your local or cloud Opik instance. When enabled, LiteLLM
+traces are sent to Opik automatically.
+
 ## 🖥️ Local Models (vLLM)
 
 Run nanobot with your own local models using vLLM or any OpenAI-compatible server.

@@ -92,10 +92,9 @@ class ToolsConfig(BaseModel):
 class OpikConfig(BaseModel):
     """Opik observability configuration."""
     enabled: bool = False
-    host: str = ""  # e.g. http://localhost:5173/api or https://www.comet.com/opik/api
-    api_key: str = ""  # required for Opik Cloud
-    workspace: str = ""
-    project: str = "nanobot"
+    api_key: str = ""
+    base_url: str = ""
+    project_name: str = "nanobot"
 
 
 class ObservabilityConfig(BaseModel):

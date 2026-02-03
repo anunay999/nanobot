@@ -5,6 +5,7 @@ from typing import Any
 
 import litellm
 from litellm import acompletion
+from loguru import logger
 
 from nanobot.providers.base import LLMProvider, LLMResponse, ToolCallRequest
 
@@ -21,7 +22,11 @@ class LiteLLMProvider(LLMProvider):
         self, 
         api_key: str | None = None, 
         api_base: str | None = None,
-        default_model: str = "anthropic/claude-opus-4-5"
+        default_model: str = "anthropic/claude-opus-4-5",
+        opik_enabled: bool = False,
+        opik_api_key: str | None = None,
+        opik_base_url: str | None = None,
+        opik_project_name: str | None = None,
     ):
         super().__init__(api_key, api_base)
         self.default_model = default_model
@@ -57,6 +62,14 @@ class LiteLLMProvider(LLMProvider):
         
         # Disable LiteLLM logging noise
         litellm.suppress_debug_info = True
+
+        # Optional Opik observability integration
+        self._configure_opik(
+            enabled=opik_enabled,
+            api_key=opik_api_key,
+            base_url=opik_base_url,
+            project_name=opik_project_name,
+        )
     
     async def chat(
         self,
@@ -169,3 +182,39 @@ class LiteLLMProvider(LLMProvider):
     def get_default_model(self) -> str:
         """Get the default model."""
         return self.default_model
+
+    def _configure_opik(
+        self,
+        *,
+        enabled: bool,
+        api_key: str | None,
+        base_url: str | None,
+        project_name: str | None,
+    ) -> None:
+        if not enabled and not api_key and not base_url:
+            return
+
+        try:
+            from litellm.integrations.opik.opik import OpikLogger
+            from opik import configure  # type: ignore[reportMissingImports]
+        except Exception as e:
+            logger.warning(f"Opik integration unavailable: {e}")
+            return
+
+        if api_key:
+            os.environ.setdefault("OPIK_API_KEY", api_key)
+        if base_url:
+            os.environ.setdefault("OPIK_URL_OVERRIDE", base_url)
+        if project_name:
+            os.environ.setdefault("OPIK_PROJECT_NAME", project_name)
+
+        try:
+            configure()
+        except Exception as e:
+            logger.warning(f"Opik configure failed: {e}")
+            return
+
+        callbacks = list(litellm.callbacks or [])
+        if not any(isinstance(cb, OpikLogger) for cb in callbacks):
+            callbacks.append(OpikLogger())
+            litellm.callbacks = callbacks

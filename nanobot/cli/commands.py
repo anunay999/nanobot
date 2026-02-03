@@ -198,7 +198,11 @@ def gateway(
     provider = LiteLLMProvider(
         api_key=api_key,
         api_base=api_base,
-        default_model=config.agents.defaults.model
+        default_model=config.agents.defaults.model,
+        opik_enabled=config.observability.opik.enabled,
+        opik_api_key=config.observability.opik.api_key or None,
+        opik_base_url=config.observability.opik.base_url or None,
+        opik_project_name=config.observability.opik.project_name or None,
     )
     
     # Create agent
@@ -211,7 +215,6 @@ def gateway(
         brave_api_key=config.tools.web.search.api_key or None,
         firecrawl_api_key=config.tools.web.search.firecrawl_api_key or None,
         web_search_provider=config.tools.web.search.provider or "auto",
-        opik_config=config.observability.opik,
     )
     
     # Create cron service
@@ -338,7 +341,11 @@ def agent(
     provider = LiteLLMProvider(
         api_key=api_key,
         api_base=api_base,
-        default_model=config.agents.defaults.model
+        default_model=config.agents.defaults.model,
+        opik_enabled=config.observability.opik.enabled,
+        opik_api_key=config.observability.opik.api_key or None,
+        opik_base_url=config.observability.opik.base_url or None,
+        opik_project_name=config.observability.opik.project_name or None,
     )
     
     agent_loop = AgentLoop(
@@ -348,7 +355,6 @@ def agent(
         brave_api_key=config.tools.web.search.api_key or None,
         firecrawl_api_key=config.tools.web.search.firecrawl_api_key or None,
         web_search_provider=config.tools.web.search.provider or "auto",
-        opik_config=config.observability.opik,
     )
     
     if message:

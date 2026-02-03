@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
 
 @dataclass
@@ -16,6 +17,7 @@ class InboundMessage:
     timestamp: datetime = field(default_factory=datetime.now)
     media: list[str] = field(default_factory=list)  # Media URLs
     metadata: dict[str, Any] = field(default_factory=dict)  # Channel-specific data
+    message_id: str = field(default_factory=lambda: uuid4().hex)
     
     @property
     def session_key(self) -> str:
@@ -33,5 +35,7 @@ class OutboundMessage:
     reply_to: str | None = None
     media: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+    message_id: str = field(default_factory=lambda: uuid4().hex)
+    correlation_id: str | None = None
 
 

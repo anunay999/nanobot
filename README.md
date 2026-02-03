@@ -116,6 +116,23 @@ nanobot agent -m "What is 2+2?"
 
 That's it! You have a working AI assistant in 2 minutes.
 
+## 🔎 Logs & Debugging
+
+nanobot writes structured logs to `~/.nanobot/logs/nanobot.log`.
+
+**Common commands (VPS-friendly):**
+
+```bash
+# Follow logs in real time
+tail -f ~/.nanobot/logs/nanobot.log
+
+# Search for a specific message reference ID
+rg "REF_ID_HERE" ~/.nanobot/logs/nanobot.log
+```
+
+If a message fails, the user-facing error includes a `Reference ID`. Use that ID
+to locate the full stack trace and tool/LLM timing in the log file.
+
 ## 🖥️ Local Models (vLLM)
 
 Run nanobot with your own local models using vLLM or any OpenAI-compatible server.

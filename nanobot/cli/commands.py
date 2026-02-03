@@ -175,11 +175,11 @@ def gateway(
     from nanobot.cron.types import CronJob
     from nanobot.heartbeat.service import HeartbeatService
     
-    if verbose:
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
+    from nanobot.utils.logging import setup_logging
+    log_path = setup_logging(verbose=verbose)
     
     console.print(f"{__logo__} Starting nanobot gateway on port {port}...")
+    console.print(f"[dim]Logs: {log_path}[/dim]")
     
     config = load_config()
     
@@ -211,6 +211,7 @@ def gateway(
         brave_api_key=config.tools.web.search.api_key or None,
         firecrawl_api_key=config.tools.web.search.firecrawl_api_key or None,
         web_search_provider=config.tools.web.search.provider or "auto",
+        opik_config=config.observability.opik,
     )
     
     # Create cron service
@@ -279,6 +280,8 @@ def gateway(
 
 def _run_gateway_daemon(port: int, verbose: bool) -> None:
     """Spawn gateway in background and exit."""
+    from nanobot.utils.helpers import get_data_path
+
     cmd = [sys.executable, "-m", "nanobot", "gateway", "--port", str(port)]
     if verbose:
         cmd.append("--verbose")
@@ -294,7 +297,9 @@ def _run_gateway_daemon(port: int, verbose: bool) -> None:
             start_new_session=True,
         )
 
+    log_path = get_data_path() / "logs" / "nanobot.log"
     console.print(f"[green]✓[/green] Gateway daemon started (pid {process.pid})")
+    console.print(f"[dim]Logs: {log_path}[/dim]")
 
 
 
@@ -308,13 +313,18 @@ def _run_gateway_daemon(port: int, verbose: bool) -> None:
 def agent(
     message: str = typer.Option(None, "--message", "-m", help="Message to send to the agent"),
     session_id: str = typer.Option("cli:default", "--session", "-s", help="Session ID"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ):
     """Interact with the agent directly."""
     from nanobot.config.loader import load_config
     from nanobot.bus.queue import MessageBus
     from nanobot.providers.litellm_provider import LiteLLMProvider
     from nanobot.agent.loop import AgentLoop
+    from nanobot.utils.logging import setup_logging
     
+    log_path = setup_logging(verbose=verbose)
+    console.print(f"[dim]Logs: {log_path}[/dim]")
+
     config = load_config()
     
     api_key = config.get_api_key()
@@ -338,6 +348,7 @@ def agent(
         brave_api_key=config.tools.web.search.api_key or None,
         firecrawl_api_key=config.tools.web.search.firecrawl_api_key or None,
         web_search_provider=config.tools.web.search.provider or "auto",
+        opik_config=config.observability.opik,
     )
     
     if message:

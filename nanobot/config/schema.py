@@ -89,6 +89,20 @@ class ToolsConfig(BaseModel):
     web: WebToolsConfig = Field(default_factory=WebToolsConfig)
 
 
+class OpikConfig(BaseModel):
+    """Opik observability configuration."""
+    enabled: bool = False
+    host: str = ""  # e.g. http://localhost:5173/api or https://www.comet.com/opik/api
+    api_key: str = ""  # required for Opik Cloud
+    workspace: str = ""
+    project: str = "nanobot"
+
+
+class ObservabilityConfig(BaseModel):
+    """Observability configuration."""
+    opik: OpikConfig = Field(default_factory=OpikConfig)
+
+
 class Config(BaseSettings):
     """Root configuration for nanobot."""
     agents: AgentsConfig = Field(default_factory=AgentsConfig)
@@ -96,6 +110,7 @@ class Config(BaseSettings):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     
     @property
     def workspace_path(self) -> Path:
